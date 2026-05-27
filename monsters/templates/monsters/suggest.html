@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Suggestions — Scroll of Suggestion{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">✨ Scroll of Suggestion</h2>
+  <p class="page-desc">Pick a monster and we'll suggest similar ones using our recommendation engine.</p>
+</div>
+<div class="empty-state">
+  <p>🐉 No monsters loaded yet. <a href="{% url 'monsters:load' %}">Load data first</a>.</p>
+</div>
+{% endblock %}

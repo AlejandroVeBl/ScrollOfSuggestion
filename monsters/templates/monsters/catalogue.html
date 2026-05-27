@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Catalogue — D&D Monster Compendium{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">📖 Monster Catalogue</h2>
+  <p class="page-desc">Browse all monsters stored in the database.</p>
+</div>
+<div class="empty-state">
+  <p>🐉 No monsters loaded yet. <a href="{% url 'monsters:load' %}">Load data first</a>.</p>
+</div>
+{% endblock %}

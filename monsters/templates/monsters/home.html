@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home — D&D Monster Compendium{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <h1 class="hero-title">Dungeons &amp; Dragons</h1>
+    <p class="hero-subtitle">Monster Compendium</p>
+    <p class="hero-desc">
+      Explore, search and discover every creature from the Monster Manual.
+      Filter by type, challenge rating, alignment and more.
+    </p>
+    <div class="hero-actions">
+      <a href="{% url 'monsters:catalogue' %}" class="btn btn-primary">Browse Monsters</a>
+      <a href="{% url 'monsters:search' %}"   class="btn btn-secondary">Search</a>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="feature-card">
+    <div class="feature-icon">⬇</div>
+    <h3>Load Data</h3>
+    <p>Scrape the full monster list directly from aidedd.org and store it locally.</p>
+    <a href="{% url 'monsters:load' %}" class="btn btn-outline">Load now</a>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">📖</div>
+    <h3>Catalogue</h3>
+    <p>Browse every monster with filters for size, type, CR, habitat and alignment.</p>
+    <a href="{% url 'monsters:catalogue' %}" class="btn btn-outline">Browse</a>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🔍</div>
+    <h3>Full-text Search</h3>
+    <p>Find monsters by any attribute or description keyword.</p>
+    <a href="{% url 'monsters:search' %}" class="btn btn-outline">Search</a>
+  </div>
+  <div class="feature-card">
+  <div class="feature-icon">✨</div>
+    <h3>Scroll of Suggestion</h3>
+    <p>Pick a monster and discover similar creatures with our recommendation engine.</p>
+    <a href="{% url 'monsters:suggest' %}" class="btn btn-outline">Suggest</a>
+  </div>
+  
+</section>
+{% endblock %}

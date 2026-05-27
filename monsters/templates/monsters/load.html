@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Load Data — D&D Monster Compendium{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">⬇ Load Monster Data</h2>
+  <p class="page-desc">
+    This will scrape <strong>aidedd.org/monster/</strong> using BeautifulSoup
+    and store the results in the local database.
+  </p>
+</div>
+
+<div class="load-panel">
+  <div class="load-info">
+    <div class="info-row"><span class="info-label">Source</span><span class="info-val">aidedd.org/monster/</span></div>
+    <div class="info-row"><span class="info-label">Action</span><span class="info-val">Scrape monster list + individual pages</span></div>
+    <div class="info-row"><span class="info-label">Storage</span><span class="info-val">SQLite database + Whoosh index</span></div>
+  </div>
+
+  <button id="start-btn" class="btn btn-primary btn-large">
+    ⚔ Start Scraping
+  </button>
+
+  <div id="progress-wrap" class="progress-wrap hidden">
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+    </div>
+    <p id="progress-label" class="progress-label">Initialising…</p>
+  </div>
+
+  <div id="result-box" class="result-box hidden"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('start-btn').addEventListener('click', async () => {
+  const btn        = document.getElementById('start-btn');
+  const wrap       = document.getElementById('progress-wrap');
+  const fill       = document.getElementById('progress-fill');
+  const label      = document.getElementById('progress-label');
+  const resultBox  = document.getElementById('result-box');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  wrap.classList.remove('hidden');
+  resultBox.classList.add('hidden');
+
+  // Animate indeterminate bar while waiting
+  fill.style.width = '0%';
+  let fake = 0;
+  const ticker = setInterval(() => {
+    if (fake < 85) { fake += Math.random() * 3; fill.style.width = fake + '%'; }
+  }, 400);
+
+  try {
+    const resp = await fetch("{% url 'monsters:load' %}", {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      },
+    });
+    const data = await resp.json();
+    clearInterval(ticker);
+    fill.style.width = '100%';
+    label.textContent = 'Done!';
+
+    resultBox.classList.remove('hidden');
+    resultBox.classList.add(data.status === 'ok' ? 'result-ok' : 'result-error');
+    resultBox.textContent = data.message;
+  } catch (err) {
+    clearInterval(ticker);
+    label.textContent = 'Error';
+    resultBox.classList.remove('hidden');
+    resultBox.classList.add('result-error');
+    resultBox.textContent = 'Network error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚔ Start Scraping';
+  }
+});
+</script>
+{% endblock %}

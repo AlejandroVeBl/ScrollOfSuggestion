@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Search — D&D Monster Compendium{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">🔍 Search Monsters</h2>
+  <p class="page-desc">Full-text search powered by Whoosh.</p>
+</div>
+<div class="empty-state">
+  <p>🐉 No index yet. <a href="{% url 'monsters:load' %}">Load data first</a>.</p>
+</div>
+{% endblock %}

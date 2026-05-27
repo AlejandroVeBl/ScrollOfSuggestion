@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Scroll of Suggestion{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- ═══════════════════  NAVBAR  ═══════════════════ -->
+  <nav class="navbar">
+    <a href="{% url 'monsters:home' %}" class="navbar-brand">
+      <span class="brand-rune">📜</span>
+      <span class="brand-text">Scroll of<br><em>Suggestion</em></span>
+    </a>
+
+    <ul class="nav-links">
+      <li>
+        <a href="{% url 'monsters:home' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+          Home
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'monsters:load' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'load' %}active{% endif %}">
+          ⬇ Load Data
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'monsters:catalogue' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'catalogue' %}active{% endif %}">
+          📖 Catalogue
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'monsters:search' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'search' %}active{% endif %}">
+          🔍 Search
+        </a>
+      </li>
+      <li>
+        <a href="{% url 'monsters:suggest' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'suggest' %}active{% endif %}">
+          ✨ Suggestions
+        </a>
+      </li>
+    </ul>
+
+    <!-- Hamburger for mobile -->
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- ═══════════════════  CONTENT  ═══════════════════ -->
+  <main class="main-content">
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <div class="message message-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ═══════════════════  FOOTER  ═══════════════════ -->
+  <footer class="footer">
+    <p>
+      <span class="footer-brand">Scroll of Suggestion</span>
+      &mdash; monster data sourced from
+      <a href="https://www.aidedd.org/monster/" target="_blank" rel="noopener">aidedd.org</a>
+    </p>
+  </footer>
+
+  <script src="{% static 'js/main.js' %}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
