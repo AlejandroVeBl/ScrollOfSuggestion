@@ -39,6 +39,7 @@ class Monster(models.Model):
     bonus_actions       = models.TextField(blank=True)
     reactions           = models.TextField(blank=True)
     legendary_actions   = models.TextField(blank=True)
+    resistances         = models.CharField(max_length=300, blank=True)
 
     # ── Flavour ───────────────────────────────────────────────────────
     description = models.TextField(blank=True)

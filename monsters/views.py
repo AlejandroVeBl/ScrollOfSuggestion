@@ -1,10 +1,34 @@
-from django.shortcuts import render
-from django.http import JsonResponse
 import json
+
 from django.shortcuts import render
 from django.http import JsonResponse
-from monsters.utils.scraper import scrape_monster_list, save_monster
 
+from monsters.models import Monster
+from monsters.utils.scraper import scrape_monster_list, scrape_monster_detail
+
+def save_monster(name, detail_url):
+    '''
+    Loads the monsters inside the DB
+    '''
+    detail = scrape_monster_detail(detail_url)
+    detail["name"] = name
+    detail["detail_url"] = detail_url
+
+    if "cr_full" in detail:
+        detail["cr"] = detail.pop("cr_full")
+    detail.pop("type_line", None)
+
+    for stat in ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"):
+        try:
+            detail[stat] = int(detail.get(stat, ""))
+        except (ValueError, TypeError):
+            detail[stat] = None
+
+    monster, created = Monster.objects.update_or_create(
+        name=name,
+        defaults=detail,
+    )
+    return monster, created
 
 def home(request):
     return render(request, 'monsters/home.html')

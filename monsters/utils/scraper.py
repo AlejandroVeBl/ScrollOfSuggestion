@@ -68,16 +68,29 @@ def scrape_monster_detail(detail_url):
     if init_div:
         data["initiative"] = init_div.get_text(strip=True).replace("Initiative", "").strip()
 
-    # ── AC / HP / Speed (text nodes after <strong> tags) ─────────────
-    red_text = red_div.get_text(separator="\n")
-    for line in red_text.splitlines():
-        line = line.strip()
-        if line.startswith("AC"):
-            data["ac"] = line.replace("AC", "").strip()
-        elif line.startswith("HP"):
-            data["hp"] = line.replace("HP", "").strip()
-        elif line.startswith("Speed"):
-            data["speed"] = line.replace("Speed", "").strip()
+    # ── AC / HP / Speed ───────────────────────────────────────────────
+    for strong in red_div.find_all("strong"):
+        label = strong.get_text(strip=True)
+        sibling = strong.next_sibling
+        value = sibling.strip() if sibling and isinstance(sibling, str) else ""
+        if label == "AC":
+            data["ac"] = value
+        elif label == "HP":
+            data["hp"] = value
+        elif label == "Speed":
+            data["speed"] = value
+        elif label == "Skills":
+            data["skills"] = value
+        elif label == "Resistances":
+            data["resistances"] = value
+        elif label == "Immunities":
+            data["immunities"] = value
+        elif label == "Senses":
+            data["senses"] = value
+        elif label == "Languages":
+            data["languages"] = value
+        elif label == "CR":
+            data["cr_full"] = value
 
     # ── Ability scores ────────────────────────────────────────────────
     label_map = {
@@ -115,10 +128,10 @@ def scrape_monster_detail(detail_url):
         elif label == "CR":
             data["cr_full"] = value   # e.g. "14 (XP 11 500; PB +5)"
 
-    # ── Sections: Traits / Actions / Bonus Actions / Reactions / Legendary ──
+    # ── Sections ──────────────────────────────────────────────────────
     sections = {}
     for h2 in soup.find_all("h2", class_="rub"):
-        section_name = h2.get_text(strip=True)
+        section_name = h2.get_text(strip=True).lower()
         paragraphs = []
         for sibling in h2.next_siblings:
             if getattr(sibling, "name", None) == "h2":
@@ -127,12 +140,11 @@ def scrape_monster_detail(detail_url):
                 paragraphs.append(sibling.get_text(strip=True))
         sections[section_name] = "\n".join(paragraphs)
 
-    data["traits"]             = sections.get("Traits", "")
-    data["actions"]            = sections.get("Actions", "")
-    data["bonus_actions"]      = sections.get("Bonus Actions", "")
-    data["reactions"]          = sections.get("Reactions", "")
-    data["legendary_actions"]  = sections.get("Legendary actions", "")
-    data["mythic_actions"]     = sections.get("Mythic Actions", "")
+    data["traits"]            = sections.get("traits", "")
+    data["actions"]           = sections.get("actions", "")
+    data["bonus_actions"]     = sections.get("bonus actions", "")
+    data["reactions"]         = sections.get("reactions", "")
+    data["legendary_actions"] = sections.get("legendary actions", "")
 
     # ── Description ───────────────────────────────────────────────────
     description_div = soup.find("div", class_="description")
@@ -161,29 +173,6 @@ def scrape_monster_detail(detail_url):
             data["image_url"] = src if src.startswith("http") else BASE_URL + "/monster/" + src
 
     return data
-
-def save_monster(name, detail_url):
-    detail = scrape_monster_detail(detail_url)
-    detail["name"] = name
-    detail["detail_url"] = detail_url
-
-    # Map cr_full → cr, then drop fields the model doesn't have
-    if "cr_full" in detail:
-        detail["cr"] = detail.pop("cr_full")
-    detail.pop("type_line", None)
-
-    # Convert ability scores to int safely
-    for stat in ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"):
-        try:
-            detail[stat] = int(detail.get(stat, ""))
-        except (ValueError, TypeError):
-            detail[stat] = None
-
-    monster, created = Monster.objects.update_or_create(
-        name=name,
-        defaults=detail,
-    )
-    return monster, created
 
 
 # ── Quick test ───────────────────────────────────────────────────────────────
