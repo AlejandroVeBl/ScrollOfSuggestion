@@ -22,6 +22,12 @@
     ⚔ Start Scraping
   </button>
 
+  <div class="load-divider">or</div>
+
+  <button id="index-btn" class="btn btn-secondary btn-large">
+    📚 Build Index from existing DB
+  </button>
+
   <div id="progress-wrap" class="progress-wrap hidden">
     <div class="progress-bar-track">
       <div class="progress-bar-fill" id="progress-fill"></div>
@@ -35,6 +41,7 @@
 
 {% block extra_scripts %}
 <script>
+  // ── Scrapping btn ─────────────────────
 document.getElementById('start-btn').addEventListener('click', async () => {
   const btn        = document.getElementById('start-btn');
   const wrap       = document.getElementById('progress-wrap');
@@ -79,6 +86,35 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   } finally {
     btn.disabled = false;
     btn.textContent = '⚔ Start Scraping';
+  }
+});
+
+// ── Index Btn ─────────────────────
+
+document.getElementById('index-btn').addEventListener('click', async () => {
+  const btn       = document.getElementById('index-btn');
+  const resultBox = document.getElementById('result-box');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Indexing…';
+  resultBox.classList.add('hidden');
+
+  try {
+    const resp = await fetch("{% url 'monsters:build_index' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+    });
+    const data = await resp.json();
+    resultBox.classList.remove('hidden', 'result-ok', 'result-error');
+    resultBox.classList.add(data.status === 'ok' ? 'result-ok' : 'result-error');
+    resultBox.textContent = data.message;
+  } catch (err) {
+    resultBox.classList.remove('hidden');
+    resultBox.classList.add('result-error');
+    resultBox.textContent = 'Network error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📚 Build Index from existing DB';
   }
 });
 </script>

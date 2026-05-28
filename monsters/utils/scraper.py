@@ -1,10 +1,25 @@
 import requests
 from bs4 import BeautifulSoup
 
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 # from monsters.models import Monster
 
 BASE_URL = "https://www.aidedd.org"
 LIST_URL = f"{BASE_URL}/monster/"
+
+def get_session():
+    session = requests.Session()
+    retry = Retry(
+        total=3,
+        backoff_factor=2,        # waits 2s, 4s, 8s between retries
+        status_forcelist=[500, 502, 503, 504],
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://",  adapter)
+    return session
 
 
 def scrape_monster_list():
@@ -12,7 +27,8 @@ def scrape_monster_list():
     Scrapes only names and detail URLs from the main monster table.
     All stats are fetched from each monster's detail page.
     """
-    response = requests.get(LIST_URL, timeout=15)
+    session = get_session()
+    response = session.get(LIST_URL, timeout=15)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
 
@@ -36,7 +52,8 @@ def scrape_monster_detail(detail_url):
     Scrapes a monster's individual page, e.g. aidedd.org/monster/ape
     Returns a dict with full stat block details.
     """
-    response = requests.get(detail_url, timeout=15)
+    session = get_session()
+    response = session.get(detail_url, timeout=15)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
 

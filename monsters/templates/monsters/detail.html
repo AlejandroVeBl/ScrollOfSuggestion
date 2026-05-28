@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}{{ monster.name }} — Scroll of Suggestion{% endblock %}
+
+{% block content %}
+<div class="detail-layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="detail-sidebar">
+    {% if monster.image_url %}
+      <img src="{{ monster.image_url }}" alt="{{ monster.name }}" class="detail-img">
+    {% else %}
+      <div class="detail-img-empty">🐉</div>
+    {% endif %}
+
+    <div class="detail-meta-block">
+      <div class="info-row"><span class="info-label">Size</span>     <span>{{ monster.size }}</span></div>
+      <div class="info-row"><span class="info-label">Type</span>     <span>{{ monster.type }}</span></div>
+      <div class="info-row"><span class="info-label">Alignment</span><span>{{ monster.alignment }}</span></div>
+      <div class="info-row"><span class="info-label">CR</span>       <span>{{ monster.cr }}</span></div>
+      <div class="info-row"><span class="info-label">AC</span>       <span>{{ monster.ac }}</span></div>
+      <div class="info-row"><span class="info-label">HP</span>       <span>{{ monster.hp }}</span></div>
+      <div class="info-row"><span class="info-label">Speed</span>    <span>{{ monster.speed }}</span></div>
+      <div class="info-row"><span class="info-label">Initiative</span><span>{{ monster.initiative }}</span></div>
+      {% if monster.habitat %}
+      <div class="info-row"><span class="info-label">Habitat</span>  <span>{{ monster.habitat }}</span></div>
+      {% endif %}
+      {% if monster.treasure %}
+      <div class="info-row"><span class="info-label">Treasure</span> <span>{{ monster.treasure }}</span></div>
+      {% endif %}
+      {% if monster.source %}
+      <div class="info-row"><span class="info-label">Source</span>   <span>{{ monster.source }}</span></div>
+      {% endif %}
+    </div>
+  </aside>
+
+  <!-- ── Main content ── -->
+  <div class="detail-main">
+    <div class="detail-header">
+      <h2 class="detail-name">{{ monster.name }}</h2>
+      <a href="{{ monster.detail_url }}" target="_blank" class="btn btn-outline btn-sm">
+        View on aidedd.org ↗
+      </a>
+    </div>
+
+    <!-- Ability scores -->
+    <div class="ability-scores">
+      {% for label, val in abilities %}
+      <div class="ability-box">
+        <span class="ability-label">{{ label }}</span>
+        <span class="ability-val">{{ val }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Proficiencies -->
+    {% if monster.skills %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Skills</h4>
+      <p>{{ monster.skills }}</p>
+    </div>
+    {% endif %}
+    {% if monster.immunities %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Immunities</h4>
+      <p>{{ monster.immunities }}</p>
+    </div>
+    {% endif %}
+    {% if monster.resistances %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Resistances</h4>
+      <p>{{ monster.resistances }}</p>
+    </div>
+    {% endif %}
+    {% if monster.senses %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Senses</h4>
+      <p>{{ monster.senses }}</p>
+    </div>
+    {% endif %}
+    {% if monster.languages %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Languages</h4>
+      <p>{{ monster.languages }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Stat blocks -->
+    {% if monster.traits %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Traits</h4>
+      <p>{{ monster.traits|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+    {% if monster.actions %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Actions</h4>
+      <p>{{ monster.actions|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+    {% if monster.bonus_actions %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Bonus Actions</h4>
+      <p>{{ monster.bonus_actions|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+    {% if monster.reactions %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Reactions</h4>
+      <p>{{ monster.reactions|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+    {% if monster.legendary_actions %}
+    <div class="detail-section">
+      <h4 class="detail-section__title">Legendary Actions</h4>
+      <p>{{ monster.legendary_actions|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Description -->
+    {% if monster.description %}
+    <div class="detail-section detail-section--description">
+      <h4 class="detail-section__title">About</h4>
+      <p>{{ monster.description }}</p>
+    </div>
+    {% endif %}
+
+    <div class="detail-footer">
+      <a href="{% url 'monsters:catalogue' %}" class="btn btn-outline">← Back to Catalogue</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

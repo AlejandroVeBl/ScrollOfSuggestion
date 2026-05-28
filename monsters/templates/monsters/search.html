@@ -1,11 +1,86 @@
 {% extends 'base.html' %}
-{% block title %}Search — D&D Monster Compendium{% endblock %}
+{% block title %}Search — Scroll of Suggestion{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <h2 class="page-title">🔍 Search Monsters</h2>
   <p class="page-desc">Full-text search powered by Whoosh.</p>
 </div>
+
+<form method="GET" class="search-form">
+
+  <div class="search-bar">
+    <input type="text" name="q" value="{{ query_str }}"
+           class="search-input" placeholder="e.g. acid breath, telepathy, fire immunity…"
+           autofocus>
+    <button type="submit" class="btn btn-primary">Search</button>
+  </div>
+
+  <!-- Field checkboxes -->
+  <div class="search-fields">
+    <span class="filter-label">Search in</span>
+    {% for key, label in available_fields.items %}
+    <label class="field-checkbox">
+      <input type="checkbox" name="fields" value="{{ key }}"
+             {% if key in selected_fields %}checked{% endif %}>
+      {{ label }}
+    </label>
+    {% endfor %}
+  </div>
+
+</form>
+
+<!-- Results -->
+{% if query_str %}
+  <p class="search-results-count">
+    {% if total %}
+      {{ total }} result{{ total|pluralize }} for <em>"{{ query_str }}"</em>
+    {% else %}
+      No results for <em>"{{ query_str }}"</em> — try different keywords or fields.
+    {% endif %}
+  </p>
+
+  {% if monsters %}
+  <div class="monster-grid">
+    {% for m in monsters %}
+    <a href="{% url 'monsters:detail' m.pk %}" class="monster-card-link">
+      <div class="monster-card">
+        {% if m.image_url %}
+        <div class="monster-card__img-wrap">
+          <img src="{{ m.image_url }}" alt="{{ m.name }}" class="monster-card__img" loading="lazy">
+        </div>
+        {% else %}
+        <div class="monster-card__img-wrap monster-card__img-wrap--empty"><span>🐉</span></div>
+        {% endif %}
+        <div class="monster-card__body">
+          <h3 class="monster-card__name">{{ m.name }}</h3>
+          <p class="monster-card__meta">{{ m.size }} {{ m.type }}</p>
+          <p class="monster-card__meta monster-card__meta--muted">{{ m.alignment }}</p>
+          <div class="monster-card__stats">
+            <div class="stat-pill">
+              <span class="stat-pill__label">CR</span>
+              <span class="stat-pill__val">{{ m.cr|truncatechars:6 }}</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-pill__label">AC</span>
+              <span class="stat-pill__val">{{ m.ac }}</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-pill__label">HP</span>
+              <span class="stat-pill__val">{{ m.hp|truncatechars:8 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+{% else %}
 <div class="empty-state">
-  <p>🐉 No index yet. <a href="{% url 'monsters:load' %}">Load data first</a>.</p>
+  <p>Enter a keyword above to search across monster stat blocks.</p>
 </div>
+{% endif %}
+
 {% endblock %}
