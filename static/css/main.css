@@ -279,6 +279,13 @@ a:hover { color: var(--gold-light); }
   margin: 1rem 0;
 }
 
+.sort-relevance-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 1.25rem;
+}
+
 /* ══════════════════ FEATURE CARDS ══════════════════ */
 .features {
   display: grid;

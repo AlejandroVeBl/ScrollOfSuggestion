@@ -3,7 +3,7 @@ import shutil
 from django.conf import settings
 from whoosh import index
 from whoosh.fields import Schema, TEXT, KEYWORD, NUMERIC, ID
-from whoosh.qparser import MultifieldParser, OrGroup
+from whoosh.qparser import MultifieldParser, OrGroup, AndGroup
 from whoosh.query import Every
 
 
@@ -87,7 +87,7 @@ def search_monsters(query_str, fields=None, limit=50):
             from whoosh.query import Every
             hits = searcher.search(Every(), limit=limit)
         else:
-            parser = MultifieldParser(fields, schema=ix.schema, group=OrGroup)
+            parser = MultifieldParser(fields, schema=ix.schema, group=AndGroup)
             query  = parser.parse(query_str)
             hits   = searcher.search(query, limit=limit)
 

@@ -7,104 +7,126 @@
   <p class="page-desc">{{ total }} monster{{ total|pluralize }} found.</p>
 </div>
 
-<!-- ── Filters ── -->
-<form method="GET" class="filter-form">
-  <div class="filter-row">
+<form method="GET">
 
-    <div class="filter-group">
-      <label class="filter-label">Name</label>
-      <input type="text" name="name" value="{{ name_query }}"
-             class="filter-input" placeholder="Search name…">
-    </div>
-
-    <div class="filter-group">
-      <label class="filter-label">Type</label>
-      <select name="type" class="filter-input">
-        <option value="">All types</option>
-        {% for t in all_types %}
-          <option value="{{ t }}" {% if t == type_filter %}selected{% endif %}>{{ t }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="filter-group">
-      <label class="filter-label">Size</label>
-      <select name="size" class="filter-input">
-        <option value="">All sizes</option>
-        {% for s in all_sizes %}
-          <option value="{{ s }}" {% if s == size_filter %}selected{% endif %}>{{ s }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="filter-group">
-      <label class="filter-label">Alignment</label>
-      <select name="alignment" class="filter-input">
-        <option value="">All alignments</option>
-        {% for a in all_alignments %}
-          <option value="{{ a }}" {% if a == align_filter %}selected{% endif %}>{{ a }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="filter-group">
-      <label class="filter-label">Habitat</label>
-      <select name="habitat" class="filter-input">
-        <option value="">All habitats</option>
-        {% for h in all_habitats %}
-          <option value="{{ h }}" {% if h == habitat_filter %}selected{% endif %}>{{ h }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="filter-group filter-group--narrow">
-      <label class="filter-label">CR min</label>
-      <input type="number" name="cr_min" value="{{ cr_min }}"
-             class="filter-input" placeholder="0" min="0" max="30" step="0.5">
-    </div>
-
-    <div class="filter-group filter-group--narrow">
-      <label class="filter-label">CR max</label>
-      <input type="number" name="cr_max" value="{{ cr_max }}"
-             class="filter-input" placeholder="30" min="0" max="30" step="0.5">
-    </div>
-
-    <div class="filter-group filter-group--btn">
-      <button type="submit" class="btn btn-primary">Filter</button>
+  <!-- ── Full-text search bar ── -->
+  <div class="search-bar">
+    <input type="text" name="q" value="{{ query_str }}"
+           class="search-input" placeholder="Search actions, traits, description… (Below)">
+    <button type="submit" class="btn btn-primary">Search</button>
+    {% if query_str or name_query or type_filter or size_filter or align_filter or habitat_filter or cr_min or cr_max %}
       <a href="{% url 'monsters:catalogue' %}" class="btn btn-outline">Reset</a>
-    </div>
-
+    {% endif %}
   </div>
+
+  <!-- ── Whoosh field checkboxes ── -->
+  <div class="search-fields">
+    <span class="filter-label">Search in</span>
+    {% for key, label in available_fields.items %}
+    <label class="field-checkbox">
+      <input type="checkbox" name="fields" value="{{ key }}"
+             {% if key in selected_fields %}checked{% endif %}>
+      {{ label }}
+    </label>
+    {% endfor %}
+  </div>
+
+  <br>
+
+  <!-- ── DB filters ── -->
+  <div class="filter-form">
+    <div class="filter-row">
+
+      <div class="filter-group">
+        <label class="filter-label">Name</label>
+        <input type="text" name="name" value="{{ name_query }}"
+               class="filter-input" placeholder="Filter by name…">
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Type</label>
+        <select name="type" class="filter-input">
+          <option value="">All types</option>
+          {% for t in all_types %}
+            <option value="{{ t }}" {% if t == type_filter %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Size</label>
+        <select name="size" class="filter-input">
+          <option value="">All sizes</option>
+          {% for s in all_sizes %}
+            <option value="{{ s }}" {% if s == size_filter %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Alignment</label>
+        <select name="alignment" class="filter-input">
+          <option value="">All alignments</option>
+          {% for a in all_alignments %}
+            <option value="{{ a }}" {% if a == align_filter %}selected{% endif %}>{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">Habitat</label>
+        <select name="habitat" class="filter-input">
+          <option value="">All habitats</option>
+          {% for h in all_habitats %}
+            <option value="{{ h }}" {% if h == habitat_filter %}selected{% endif %}>{{ h }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group filter-group--narrow">
+        <label class="filter-label">CR min</label>
+        <input type="number" name="cr_min" value="{{ cr_min }}"
+               class="filter-input" placeholder="0" min="0" max="30" step="0.5">
+      </div>
+
+      <div class="filter-group filter-group--narrow">
+        <label class="filter-label">CR max</label>
+        <input type="number" name="cr_max" value="{{ cr_max }}"
+               class="filter-input" placeholder="30" min="0" max="30" step="0.5">
+      </div>
+
+      <div class="filter-group filter-group--btn">
+        <button type="submit" class="btn btn-secondary">Filter</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Sort bar (hidden when using Whoosh — results are by relevance) ── -->
+  {% if not query_str %}
+  <div class="sort-bar">
+    <span class="sort-label">Sort by</span>
+
+    <a href="?name={{ name_query }}&type={{ type_filter }}&size={{ size_filter }}&alignment={{ align_filter }}&habitat={{ habitat_filter }}&cr_min={{ cr_min }}&cr_max={{ cr_max }}&sort=name&order={% if sort_by == 'name' %}{{ next_order }}{% else %}asc{% endif %}"
+       class="sort-btn {% if sort_by == 'name' %}sort-btn--active{% endif %}">
+      Name {% if sort_by == 'name' %}{% if sort_order == 'asc' %}↑{% else %}↓{% endif %}{% endif %}
+    </a>
+
+    <a href="?name={{ name_query }}&type={{ type_filter }}&size={{ size_filter }}&alignment={{ align_filter }}&habitat={{ habitat_filter }}&cr_min={{ cr_min }}&cr_max={{ cr_max }}&sort=cr&order={% if sort_by == 'cr' %}{{ next_order }}{% else %}asc{% endif %}"
+       class="sort-btn {% if sort_by == 'cr' %}sort-btn--active{% endif %}">
+      CR {% if sort_by == 'cr' %}{% if sort_order == 'asc' %}↑{% else %}↓{% endif %}{% endif %}
+    </a>
+
+    <a href="?name={{ name_query }}&type={{ type_filter }}&size={{ size_filter }}&alignment={{ align_filter }}&habitat={{ habitat_filter }}&cr_min={{ cr_min }}&cr_max={{ cr_max }}&sort=size&order={% if sort_by == 'size' %}{{ next_order }}{% else %}asc{% endif %}"
+       class="sort-btn {% if sort_by == 'size' %}sort-btn--active{% endif %}">
+      Size {% if sort_by == 'size' %}{% if sort_order == 'asc' %}↑{% else %}↓{% endif %}{% endif %}
+    </a>
+  </div>
+  {% else %}
+  <p class="sort-relevance-note">Showing results by search relevance — clear the search to re-enable sorting.</p>
+  {% endif %}
+
 </form>
-
-<!-- ── Sort bar ── -->
-<div class="sort-bar">
-  <span class="sort-label">Sort by</span>
-
-  <a href="?name={{ name_query }}&type={{ type_filter }}&size={{ size_filter }}&alignment={{ align_filter }}&habitat={{ habitat_filter }}&cr_min={{ cr_min }}&cr_max={{ cr_max }}&sort=name&order={% if sort_by == 'name' %}{{ next_order }}{% else %}asc{% endif %}"
-     class="sort-btn {% if sort_by == 'name' %}sort-btn--active{% endif %}">
-    Name
-    {% if sort_by == 'name' %}
-      {% if sort_order == 'asc' %}↑{% else %}↓{% endif %}
-    {% endif %}
-  </a>
-
-  <a href="?name={{ name_query }}&type={{ type_filter }}&size={{ size_filter }}&alignment={{ align_filter }}&habitat={{ habitat_filter }}&cr_min={{ cr_min }}&cr_max={{ cr_max }}&sort=cr&order={% if sort_by == 'cr' %}{{ next_order }}{% else %}asc{% endif %}"
-     class="sort-btn {% if sort_by == 'cr' %}sort-btn--active{% endif %}">
-    CR
-    {% if sort_by == 'cr' %}
-      {% if sort_order == 'asc' %}↑{% else %}↓{% endif %}
-    {% endif %}
-  </a>
-
-  <a href="?name={{ name_query }}&type={{ type_filter }}&size={{ size_filter }}&alignment={{ align_filter }}&habitat={{ habitat_filter }}&cr_min={{ cr_min }}&cr_max={{ cr_max }}&sort=size&order={% if sort_by == 'size' %}{{ next_order }}{% else %}asc{% endif %}"
-     class="sort-btn {% if sort_by == 'size' %}sort-btn--active{% endif %}">
-    Size
-    {% if sort_by == 'size' %}
-      {% if sort_order == 'asc' %}↑{% else %}↓{% endif %}
-    {% endif %}
-  </a>
-</div>
 
 <!-- ── Monster grid ── -->
 {% if monsters %}
@@ -112,22 +134,17 @@
   {% for m in monsters %}
   <a href="{% url 'monsters:detail' m.pk %}" class="monster-card-link">
     <div class="monster-card">
-
       {% if m.image_url %}
       <div class="monster-card__img-wrap">
         <img src="{{ m.image_url }}" alt="{{ m.name }}" class="monster-card__img" loading="lazy">
       </div>
       {% else %}
-      <div class="monster-card__img-wrap monster-card__img-wrap--empty">
-        <span>🐉</span>
-      </div>
+      <div class="monster-card__img-wrap monster-card__img-wrap--empty"><span>🐉</span></div>
       {% endif %}
-
       <div class="monster-card__body">
         <h3 class="monster-card__name">{{ m.name }}</h3>
         <p class="monster-card__meta">{{ m.size }} {{ m.type }}</p>
         <p class="monster-card__meta monster-card__meta--muted">{{ m.alignment }}</p>
-
         <div class="monster-card__stats">
           <div class="stat-pill">
             <span class="stat-pill__label">CR</span>
@@ -143,15 +160,13 @@
           </div>
         </div>
       </div>
-    
     </div>
   </a>
   {% endfor %}
 </div>
-
 {% else %}
 <div class="empty-state">
-  <p>🐉 No monsters match your filters. <a href="{% url 'monsters:catalogue' %}">Reset filters</a>.</p>
+  <p>🐉 No monsters match your search. <a href="{% url 'monsters:catalogue' %}">Reset</a>.</p>
 </div>
 {% endif %}
 

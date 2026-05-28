@@ -37,14 +37,8 @@
       </li>
       <li>
         <a href="{% url 'monsters:catalogue' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'catalogue' %}active{% endif %}">
-          📖 Catalogue
-        </a>
-      </li>
-      <li>
-        <a href="{% url 'monsters:search' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'search' %}active{% endif %}">
-          🔍 Search
+          class="nav-link {% if request.resolver_match.url_name == 'catalogue' %}active{% endif %}">
+          🔍 Catalogue & Search
         </a>
       </li>
       <li>

@@ -9,6 +9,15 @@ from monsters.utils.whoosh_index import search_monsters
 from monsters.utils.whoosh_index import build_index
 
 # ── Helpers ─────────────────────
+available_fields = {
+    "name":               "Name",
+    "traits":             "Traits",
+    "actions":            "Actions",
+    "bonus_actions":      "Bonus Actions",
+    "reactions":          "Reactions",
+    "legendary_actions":  "Legendary Actions",
+    "description":        "Description",
+}
 
 # ── Helper.SaveMonster ─────────────────────
 
@@ -74,8 +83,7 @@ def load(request):
 # ── Catalogue ─────────────────────
 
 def catalogue(request):
-    monsters = Monster.objects.all()
-
+    query_str      = request.GET.get("q", "").strip()
     name_query     = request.GET.get("name", "").strip()
     type_filter    = request.GET.get("type", "").strip()
     size_filter    = request.GET.get("size", "").strip()
@@ -83,9 +91,21 @@ def catalogue(request):
     habitat_filter = request.GET.get("habitat", "").strip()
     cr_min         = request.GET.get("cr_min", "").strip()
     cr_max         = request.GET.get("cr_max", "").strip()
-    sort_by        = request.GET.get("sort", "name")       # "name" | "cr" | "size"
-    sort_order     = request.GET.get("order", "asc")       # "asc"  | "desc"
+    sort_by        = request.GET.get("sort", "name")
+    sort_order     = request.GET.get("order", "asc")
 
+    selected_fields = request.GET.getlist("fields")
+    if not selected_fields:
+        selected_fields = list(available_fields.keys())
+
+    # ── If text query: start from Whoosh results ──────────────────────
+    if query_str:
+        pks = search_monsters(query_str, fields=selected_fields)
+        monsters = Monster.objects.filter(pk__in=pks)
+    else:
+        monsters = Monster.objects.all()
+
+    # ── DB filters ────────────────────────────────────────────────────
     if name_query:
         monsters = monsters.filter(name__icontains=name_query)
     if type_filter:
@@ -115,19 +135,19 @@ def catalogue(request):
     if cr_max:
         all_monsters = [m for m in all_monsters if cr_to_float(m.cr) <= float(cr_max)]
 
-    # ── Sorting ───────────────────────────────────────────────────────
-    SIZE_ORDER = {
-        "Tiny": 1, "Small": 2, "Medium": 3,
-        "Large": 4, "Huge": 5, "Gargantuan": 6,
-    }
-    reverse = sort_order == "desc"
-
-    if sort_by == "cr":
-        all_monsters.sort(key=lambda m: cr_to_float(m.cr), reverse=reverse)
-    elif sort_by == "size":
-        all_monsters.sort(key=lambda m: SIZE_ORDER.get(m.size, 99), reverse=reverse)
-    else:
-        all_monsters.sort(key=lambda m: m.name, reverse=reverse)
+    # ── If Whoosh query: preserve relevance order, else sort ──────────
+    if not query_str:
+        SIZE_ORDER = {
+            "Tiny": 1, "Small": 2, "Medium": 3,
+            "Large": 4, "Huge": 5, "Gargantuan": 6,
+        }
+        reverse = sort_order == "desc"
+        if sort_by == "cr":
+            all_monsters.sort(key=lambda m: cr_to_float(m.cr), reverse=reverse)
+        elif sort_by == "size":
+            all_monsters.sort(key=lambda m: SIZE_ORDER.get(m.size, 99), reverse=reverse)
+        else:
+            all_monsters.sort(key=lambda m: m.name, reverse=reverse)
 
     # ── Dropdown options ──────────────────────────────────────────────
     all_types      = Monster.objects.values_list("type",      flat=True).distinct().order_by("type")
@@ -135,26 +155,28 @@ def catalogue(request):
     all_alignments = Monster.objects.values_list("alignment", flat=True).distinct().order_by("alignment")
     all_habitats   = Monster.objects.values_list("habitat",   flat=True).distinct().order_by("habitat")
 
-    # ── Next order (for toggle links) ─────────────────────────────────
     next_order = "desc" if sort_order == "asc" else "asc"
 
     context = {
-        "monsters":       all_monsters,
-        "total":          len(all_monsters),
-        "all_types":      all_types,
-        "all_sizes":      all_sizes,
-        "all_alignments": all_alignments,
-        "all_habitats":   all_habitats,
-        "name_query":     name_query,
-        "type_filter":    type_filter,
-        "size_filter":    size_filter,
-        "align_filter":   align_filter,
-        "habitat_filter": habitat_filter,
-        "cr_min":         cr_min,
-        "cr_max":         cr_max,
-        "sort_by":        sort_by,
-        "sort_order":     sort_order,
-        "next_order":     next_order,
+        "monsters":         all_monsters,
+        "total":            len(all_monsters),
+        "all_types":        all_types,
+        "all_sizes":        all_sizes,
+        "all_alignments":   all_alignments,
+        "all_habitats":     all_habitats,
+        "query_str":        query_str,
+        "name_query":       name_query,
+        "type_filter":      type_filter,
+        "size_filter":      size_filter,
+        "align_filter":     align_filter,
+        "habitat_filter":   habitat_filter,
+        "cr_min":           cr_min,
+        "cr_max":           cr_max,
+        "sort_by":          sort_by,
+        "sort_order":       sort_order,
+        "next_order":       next_order,
+        "available_fields": available_fields,
+        "selected_fields":  selected_fields,
     }
     return render(request, "monsters/catalogue.html", context)
 
