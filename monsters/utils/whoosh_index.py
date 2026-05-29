@@ -25,10 +25,11 @@ def get_schema():
 
 def build_index():
     """
-    Drops and rebuilds the Whoosh index from the Monster database.
-    Call this from the load view after scraping.
+    Rebuilds the Whoosh index by re-scraping text content for each monster.
+    Used when the index is lost but the DB is intact.
     """
     from monsters.models import Monster
+    from monsters.utils.scraper import scrape_monster_detail
 
     if os.path.exists(INDEX_DIR):
         shutil.rmtree(INDEX_DIR)
@@ -38,15 +39,16 @@ def build_index():
     writer = ix.writer()
 
     for m in Monster.objects.all():
+        detail = scrape_monster_detail(m.detail_url)
         writer.add_document(
             id                = str(m.pk),
-            name              = m.name              or "",
-            traits            = m.traits            or "",
-            actions           = m.actions           or "",
-            bonus_actions     = m.bonus_actions     or "",
-            reactions         = m.reactions         or "",
-            legendary_actions = m.legendary_actions or "",
-            description       = m.description       or "",
+            name              = m.name,
+            traits            = detail.get("traits",            ""),
+            actions           = detail.get("actions",           ""),
+            bonus_actions     = detail.get("bonus_actions",     ""),
+            reactions         = detail.get("reactions",         ""),
+            legendary_actions = detail.get("legendary_actions", ""),
+            description       = detail.get("description",       ""),
         )
 
     writer.commit()
@@ -94,3 +96,28 @@ def search_monsters(query_str, fields=None, limit=50):
         results = [int(hit["id"]) for hit in hits]
 
     return results
+
+def get_monster_text(pk):
+    """
+    Fetches the stored text fields for a single monster from the Whoosh index.
+    Returns a dict with traits, actions, bonus_actions, reactions,
+    legendary_actions and description.
+    """
+    ix = open_index()
+    if not ix:
+        return {}
+
+    from whoosh.query import Term
+    with ix.searcher() as searcher:
+        results = searcher.search(Term("id", str(pk)), limit=1)
+        if not results:
+            return {}
+        hit = results[0]
+        return {
+            "traits":             hit.get("traits",             ""),
+            "actions":            hit.get("actions",            ""),
+            "bonus_actions":      hit.get("bonus_actions",      ""),
+            "reactions":          hit.get("reactions",          ""),
+            "legendary_actions":  hit.get("legendary_actions",  ""),
+            "description":        hit.get("description",        ""),
+        }

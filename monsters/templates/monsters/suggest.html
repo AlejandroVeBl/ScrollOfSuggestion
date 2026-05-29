@@ -1,11 +1,207 @@
 {% extends 'base.html' %}
-{% block title %}Suggestions — Scroll of Suggestion{% endblock %}
+{% block title %}Scroll of Suggestion{% endblock %}
+
 {% block content %}
 <div class="page-header">
-  <h2 class="page-title">✨ Scroll of Suggestion</h2>
-  <p class="page-desc">Pick a monster and we'll suggest similar ones using our recommendation engine.</p>
+  <h2 class="page-title">📜 Scroll of Suggestion</h2>
+  <p class="page-desc">
+    Select the monsters your party has recently fought, in order — 
+    most recent last. We'll suggest what comes next.
+  </p>
 </div>
-<div class="empty-state">
-  <p>🐉 No monsters loaded yet. <a href="{% url 'monsters:load' %}">Load data first</a>.</p>
+
+<div class="suggest-layout">
+
+  <!-- ── Selector panel ── -->
+  <div class="suggest-panel">
+    <h3 class="suggest-panel__title">Your recent encounters</h3>
+
+    <!-- Search box -->
+    <div class="autocomplete-wrap">
+      <input type="text" id="monster-search"
+             class="search-input" placeholder="Type a monster name…"
+             autocomplete="off">
+      <ul id="autocomplete-list" class="autocomplete-list hidden"></ul>
+    </div>
+
+    <!-- Selected monsters (ordered list) -->
+    <p class="selected-list__hint">Drag to reorder — #1 is oldest, last is most recent.</p>
+    <ul id="selected-list" class="selected-list">
+      <li class="selected-list__empty" id="empty-hint">
+        No monsters selected yet — search above to add some.
+      </li>
+    </ul>
+
+    <div class="suggest-actions">
+      <button id="get-suggestions" class="btn btn-primary btn-large" disabled>
+        ✨ Get Suggestions
+      </button>
+      <button id="clear-all" class="btn btn-outline" style="display:none">
+        Clear all
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Results panel ── -->
+  <div class="suggest-results" id="suggest-results">
+    <div class="empty-state">
+      <p>Your suggestions will appear here.</p>
+    </div>
+  </div>
+
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── State ─────────────────────────────────────────────────────────────
+const selected = [];   // [{id, name, cr, type}, ...]
+
+// ── DOM refs ──────────────────────────────────────────────────────────
+const searchInput       = document.getElementById('monster-search');
+const autocompleteList  = document.getElementById('autocomplete-list');
+const selectedList      = document.getElementById('selected-list');
+const emptyHint         = document.getElementById('empty-hint');
+const getSuggestionsBtn = document.getElementById('get-suggestions');
+const clearAllBtn       = document.getElementById('clear-all');
+
+// ── Autocomplete ──────────────────────────────────────────────────────
+let debounceTimer;
+searchInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const q = searchInput.value.trim();
+  if (q.length < 2) { hideAutocomplete(); return; }
+  debounceTimer = setTimeout(() => fetchSuggestions(q), 200);
+});
+
+async function fetchSuggestions(q) {
+  const resp = await fetch(`{% url 'monsters:suggest_autocomplete' %}?q=${encodeURIComponent(q)}`);
+  const data = await resp.json();
+
+  autocompleteList.innerHTML = "";
+  if (!data.results.length) { hideAutocomplete(); return; }
+
+  data.results.forEach(m => {
+    if (selected.find(s => s.id === m.id)) return;
+    const li = document.createElement('li');
+    li.className = 'autocomplete-item';
+    li.innerHTML = `
+      <span class="autocomplete-name">${m.name}</span>
+      <span class="autocomplete-meta">CR ${m.cr} · ${m.type}</span>
+    `;
+    li.addEventListener('click', () => addMonster(m));
+    autocompleteList.appendChild(li);
+  });
+
+  autocompleteList.classList.remove('hidden');
+}
+
+function hideAutocomplete() {
+  autocompleteList.classList.add('hidden');
+  autocompleteList.innerHTML = "";
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrap')) hideAutocomplete();
+});
+
+// ── Add / remove ──────────────────────────────────────────────────────
+function addMonster(m) {
+  if (selected.find(s => s.id === m.id)) return;
+  selected.push(m);
+  searchInput.value = "";
+  hideAutocomplete();
+  renderSelected();
+}
+
+function removeMonster(id) {
+  const idx = selected.findIndex(s => s.id === id);
+  if (idx !== -1) selected.splice(idx, 1);
+  renderSelected();
+}
+
+// ── Drag and drop ─────────────────────────────────────────────────────
+let dragSrcIndex = null;
+
+function onDragStart(e, index) {
+  dragSrcIndex = index;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.selected-item').forEach(el => el.classList.remove('drag-over'));
+}
+
+function onDragOver(e, index) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.selected-item').forEach(el => el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onDrop(e, dropIndex) {
+  e.preventDefault();
+  if (dragSrcIndex === null || dragSrcIndex === dropIndex) return;
+  const moved = selected.splice(dragSrcIndex, 1)[0];
+  selected.splice(dropIndex, 0, moved);
+  dragSrcIndex = null;
+  renderSelected();
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+function renderSelected() {
+  selectedList.querySelectorAll('.selected-item').forEach(el => el.remove());
+
+  if (!selected.length) {
+    emptyHint.style.display = "";
+    getSuggestionsBtn.disabled = true;
+    clearAllBtn.style.display = "none";
+    return;
+  }
+
+  emptyHint.style.display = "none";
+  getSuggestionsBtn.disabled = false;
+  clearAllBtn.style.display = "";
+
+  selected.forEach((m, idx) => {
+    const li = document.createElement('li');
+    li.className = 'selected-item';
+    li.draggable = true;
+    li.dataset.id = m.id;
+
+    const isNewest = idx === selected.length - 1;
+    li.innerHTML = `
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
+      <span class="selected-item__order">${idx + 1}</span>
+      <div class="selected-item__info">
+        <span class="selected-item__name">${m.name}</span>
+        <span class="selected-item__meta">CR ${m.cr} · ${m.type}${isNewest ? ' <em class="most-recent-tag">most recent</em>' : ''}</span>
+      </div>
+      <button class="selected-item__remove" title="Remove">✕</button>
+    `;
+
+    li.addEventListener('dragstart',  e => onDragStart(e, idx));
+    li.addEventListener('dragend',    e => onDragEnd(e));
+    li.addEventListener('dragover',   e => onDragOver(e, idx));
+    li.addEventListener('drop',       e => onDrop(e, idx));
+    li.querySelector('.selected-item__remove')
+      .addEventListener('click', () => removeMonster(m.id));
+
+    selectedList.appendChild(li);
+  });
+}
+
+// ── Clear all ─────────────────────────────────────────────────────────
+clearAllBtn.addEventListener('click', () => {
+  selected.length = 0;
+  renderSelected();
+});
+
+// ── Get suggestions (wired in next step) ─────────────────────────────
+getSuggestionsBtn.addEventListener('click', () => {
+  const ids = selected.map(m => m.id);
+  console.log("Getting suggestions for:", ids);
+});
+</script>
 {% endblock %}

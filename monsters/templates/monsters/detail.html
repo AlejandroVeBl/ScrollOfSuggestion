@@ -85,42 +85,40 @@
     {% endif %}
 
     <!-- Stat blocks -->
-    {% if monster.traits %}
+    {% if text.traits %}
     <div class="detail-section">
       <h4 class="detail-section__title">Traits</h4>
-      <p>{{ monster.traits|linebreaksbr }}</p>
+      <p>{{ text.traits|linebreaksbr }}</p>
     </div>
     {% endif %}
-    {% if monster.actions %}
+    {% if text.actions %}
     <div class="detail-section">
       <h4 class="detail-section__title">Actions</h4>
-      <p>{{ monster.actions|linebreaksbr }}</p>
+      <p>{{ text.actions|linebreaksbr }}</p>
     </div>
     {% endif %}
-    {% if monster.bonus_actions %}
+    {% if text.bonus_actions %}
     <div class="detail-section">
       <h4 class="detail-section__title">Bonus Actions</h4>
-      <p>{{ monster.bonus_actions|linebreaksbr }}</p>
+      <p>{{ text.bonus_actions|linebreaksbr }}</p>
     </div>
     {% endif %}
-    {% if monster.reactions %}
+    {% if text.reactions %}
     <div class="detail-section">
       <h4 class="detail-section__title">Reactions</h4>
-      <p>{{ monster.reactions|linebreaksbr }}</p>
+      <p>{{ text.reactions|linebreaksbr }}</p>
     </div>
     {% endif %}
-    {% if monster.legendary_actions %}
+    {% if text.legendary_actions %}
     <div class="detail-section">
       <h4 class="detail-section__title">Legendary Actions</h4>
-      <p>{{ monster.legendary_actions|linebreaksbr }}</p>
+      <p>{{ text.legendary_actions|linebreaksbr }}</p>
     </div>
     {% endif %}
-
-    <!-- Description -->
-    {% if monster.description %}
+    {% if text.description %}
     <div class="detail-section detail-section--description">
       <h4 class="detail-section__title">About</h4>
-      <p>{{ monster.description }}</p>
+      <p>{{ text.description }}</p>
     </div>
     {% endif %}
 

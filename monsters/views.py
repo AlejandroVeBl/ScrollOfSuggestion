@@ -1,12 +1,18 @@
 import json
+import os
+import shutil
+
+from whoosh import index as whoosh_index_module
 
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 
 from monsters.models import Monster
 from monsters.utils.scraper import scrape_monster_list, scrape_monster_detail
-from monsters.utils.whoosh_index import search_monsters
-from monsters.utils.whoosh_index import build_index
+from monsters.utils.whoosh_index import (
+    open_index, get_schema, INDEX_DIR,
+    build_index, search_monsters, get_monster_text
+)
 
 # ── Helpers ─────────────────────
 available_fields = {
@@ -19,12 +25,12 @@ available_fields = {
     "description":        "Description",
 }
 
+TEXT_FIELDS = ("traits", "actions", "bonus_actions", "reactions",
+               "legendary_actions", "mythic_actions", "description")
+
 # ── Helper.SaveMonster ─────────────────────
 
 def save_monster(name, detail_url):
-    '''
-    Loads the monsters inside the DB
-    '''
     detail = scrape_monster_detail(detail_url)
     detail["name"] = name
     detail["detail_url"] = detail_url
@@ -33,16 +39,39 @@ def save_monster(name, detail_url):
         detail["cr"] = detail.pop("cr_full")
     detail.pop("type_line", None)
 
-    for stat in ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"):
+    # Convert ability scores to int safely
+    for stat in ("strength", "dexterity", "constitution",
+                 "intelligence", "wisdom", "charisma"):
         try:
             detail[stat] = int(detail.get(stat, ""))
         except (ValueError, TypeError):
             detail[stat] = None
 
+    # Separate text fields for Whoosh before saving to DB
+    text_data = {field: detail.pop(field, "") or "" for field in TEXT_FIELDS}
+
+    # Save structured data to SQLite
     monster, created = Monster.objects.update_or_create(
         name=name,
         defaults=detail,
     )
+
+    # Save text data to Whoosh
+    ix = open_index()
+    if ix:
+        writer = ix.writer()
+        writer.update_document(
+            id                = str(monster.pk),
+            name              = monster.name,
+            traits            = text_data.get("traits",            ""),
+            actions           = text_data.get("actions",           ""),
+            bonus_actions     = text_data.get("bonus_actions",     ""),
+            reactions         = text_data.get("reactions",         ""),
+            legendary_actions = text_data.get("legendary_actions", ""),
+            description       = text_data.get("description",       ""),
+        )
+        writer.commit()
+
     return monster, created
 
 # ── Home ─────────────────────
@@ -55,6 +84,12 @@ def home(request):
 def load(request):
     if request.method == "POST":
         try:
+            # Create a fresh empty index before scraping
+            if os.path.exists(INDEX_DIR):
+                shutil.rmtree(INDEX_DIR)
+            os.makedirs(INDEX_DIR)
+            whoosh_index_module.create_in(INDEX_DIR, get_schema())
+
             monster_list = scrape_monster_list()
             total   = len(monster_list)
             created = 0
@@ -66,9 +101,6 @@ def load(request):
                     created += 1
                 else:
                     updated += 1
-            
-            # Build Whoosh index from the now-populated database
-            indexed = build_index()
 
             return JsonResponse({
                 "status":  "ok",
@@ -78,7 +110,6 @@ def load(request):
             return JsonResponse({"status": "error", "message": str(e)})
 
     return render(request, "monsters/load.html")
-
 
 # ── Catalogue ─────────────────────
 
@@ -184,6 +215,10 @@ def catalogue(request):
 
 def detail(request, pk):
     monster = get_object_or_404(Monster, pk=pk)
+
+    # Text content comes from Whoosh, not SQLite
+    text = get_monster_text(pk)
+
     abilities = [
         ("STR", monster.strength),
         ("DEX", monster.dexterity),
@@ -195,7 +230,8 @@ def detail(request, pk):
     return render(request, "monsters/detail.html", {
         "monster":   monster,
         "abilities": abilities,
-    })  
+        "text":      text,
+    }) 
 
 
 # ── Search ─────────────────────
@@ -253,5 +289,12 @@ def build_index_view(request):
 
 # ── Suggest ─────────────────────
 
+def suggest_autocomplete(request):
+    q = request.GET.get("q", "").strip()
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+    monsters = Monster.objects.filter(name__icontains=q).values("id", "name", "cr", "type")[:10]
+    return JsonResponse({"results": list(monsters)})
+
 def suggest(request):
-    return render(request, 'monsters/suggest.html')
+    return render(request, "monsters/suggest.html")
