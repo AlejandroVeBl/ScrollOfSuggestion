@@ -18,6 +18,14 @@ INSTALLED_APPS = [
     'monsters',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.pinggy.link",
+    "https://*.pinggy-free.link",
+    "https://*.run.pinggy-free.link",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

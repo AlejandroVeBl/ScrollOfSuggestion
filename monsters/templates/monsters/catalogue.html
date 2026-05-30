@@ -169,5 +169,22 @@
   <p>🐉 No monsters match your search. <a href="{% url 'monsters:catalogue' %}">Reset</a>.</p>
 </div>
 {% endif %}
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&q={{ query_str }}&name={{ name_query }}&type={{ type_filter }}&size={{ size_filter }}&alignment={{ align_filter }}&habitat={{ habitat_filter }}&cr_min={{ cr_min }}&cr_max={{ cr_max }}&sort={{ sort_by }}&order={{ sort_order }}"
+       class="page-btn">← Prev</a>
+  {% endif %}
+
+  <span class="page-info">
+    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  </span>
+
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&q={{ query_str }}&name={{ name_query }}&type={{ type_filter }}&size={{ size_filter }}&alignment={{ align_filter }}&habitat={{ habitat_filter }}&cr_min={{ cr_min }}&cr_max={{ cr_max }}&sort={{ sort_by }}&order={{ sort_order }}"
+       class="page-btn">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
 
 {% endblock %}

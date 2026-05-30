@@ -154,7 +154,7 @@ def scrape_monster_detail(detail_url):
             if getattr(sibling, "name", None) == "h2":
                 break
             if getattr(sibling, "name", None) == "p":
-                paragraphs.append(sibling.get_text(strip=True))
+                paragraphs.append(sibling.get_text(separator=" ", strip=True))
         sections[section_name] = "\n".join(paragraphs)
 
     data["traits"]            = sections.get("traits", "")

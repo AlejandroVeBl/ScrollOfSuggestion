@@ -10,6 +10,14 @@
   </p>
 </div>
 
+{% if not vectors_ready %}
+<div class="alert-banner">
+  ⚠ Recommendation vectors not built yet —
+  <a href="{% url 'monsters:load' %}">go to Load Data</a> and click
+  <strong>Build Index from existing DB</strong>.
+</div>
+{% endif %}
+
 <div class="suggest-layout">
 
   <!-- ── Selector panel ── -->
@@ -256,10 +264,96 @@ document.getElementById('import-input').addEventListener('change', async (e) => 
   e.target.value = "";
 });
 
-// ── Get suggestions (wired in next step) ─────────────────────────────
-getSuggestionsBtn.addEventListener('click', () => {
+// ── Get suggestions ─────────────────────────────
+getSuggestionsBtn.addEventListener('click', async () => {
   const ids = selected.map(m => m.id);
-  console.log("Getting suggestions for:", ids);
+
+  getSuggestionsBtn.disabled  = true;
+  getSuggestionsBtn.textContent = '⏳ Casting…';
+
+  const resultsPanel = document.getElementById('suggest-results');
+  resultsPanel.innerHTML = '<div class="empty-state"><p>Consulting the scroll…</p></div>';
+
+  try {
+    const resp = await fetch("{% url 'monsters:recommend' %}", {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken':  '{{ csrf_token }}',
+      },
+      body: JSON.stringify({ ids }),
+    });
+
+    const data = await resp.json();
+
+    if (data.status !== 'ok') {
+      resultsPanel.innerHTML = `<div class="empty-state"><p>❌ ${data.message}</p></div>`;
+      return;
+    }
+
+    if (!data.results.length) {
+      resultsPanel.innerHTML = '<div class="empty-state"><p>No suggestions found — try different monsters.</p></div>';
+      return;
+    }
+
+    renderResults(data.results);
+
+  } catch (err) {
+    resultsPanel.innerHTML = `<div class="empty-state"><p>❌ Network error: ${err.message}</p></div>`;
+  } finally {
+    getSuggestionsBtn.disabled  = false;
+    getSuggestionsBtn.textContent = '✨ Get Suggestions';
+  }
 });
+
+function renderResults(results) {
+  const panel = document.getElementById('suggest-results');
+
+  const header = `
+    <h3 class="suggest-results__title">
+      ✨ Suggested monsters
+      <span class="suggest-results__count">${results.length} results</span>
+    </h3>
+  `;
+
+  const cards = results.map((m, idx) => {
+    const img = m.image_url
+      ? `<img src="${m.image_url}" alt="${m.name}" class="rec-card__img" loading="lazy">`
+      : `<div class="rec-card__img rec-card__img--empty">🐉</div>`;
+
+    const scorePct = Math.round(m.score * 100);
+    const barColor = scorePct > 80 ? 'var(--gold)' : scorePct > 60 ? 'var(--crimson-light)' : 'var(--text-muted)';
+
+    return `
+      <a href="/monster/${m.id}/" class="rec-card-link">
+        <div class="rec-card">
+          <div class="rec-card__rank">#${idx + 1}</div>
+          ${img}
+          <div class="rec-card__body">
+            <h4 class="rec-card__name">${m.name}</h4>
+            <p class="rec-card__meta">${m.size} ${m.type}</p>
+            <p class="rec-card__meta rec-card__meta--muted">${m.alignment}</p>
+            <p class="rec-card__meta rec-card__meta--muted">📍 ${m.habitat || '—'}</p>
+
+            <div class="rec-card__stats">
+              <div class="stat-pill"><span class="stat-pill__label">CR</span><span class="stat-pill__val">${m.cr.split('(')[0].trim()}</span></div>
+              <div class="stat-pill"><span class="stat-pill__label">AC</span><span class="stat-pill__val">${m.ac}</span></div>
+              <div class="stat-pill"><span class="stat-pill__label">HP</span><span class="stat-pill__val">${m.hp.split('(')[0].trim()}</span></div>
+            </div>
+
+            <div class="rec-card__score-wrap">
+              <div class="rec-card__score-bar">
+                <div class="rec-card__score-fill" style="width:${scorePct}%; background:${barColor}"></div>
+              </div>
+              <span class="rec-card__score-label">${scorePct}% match</span>
+            </div>
+          </div>
+        </div>
+      </a>
+    `;
+  }).join('');
+
+  panel.innerHTML = header + `<div class="rec-grid">${cards}</div>`;
+}
 </script>
 {% endblock %}

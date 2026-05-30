@@ -6,6 +6,8 @@ from whoosh import index as whoosh_index_module
 
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
+from django.contrib.admin.views.decorators import staff_member_required
+from django.core.paginator import Paginator
 
 from monsters.models import Monster
 from monsters.utils.scraper import scrape_monster_list, scrape_monster_detail
@@ -13,6 +15,7 @@ from monsters.utils.whoosh_index import (
     open_index, get_schema, INDEX_DIR,
     build_index, search_monsters, get_monster_text
 )
+from monsters.utils.recommender import build_vectors, get_recommendations, build_profile_vector, load_all_vectors
 
 # ── Helpers ─────────────────────
 available_fields = {
@@ -81,6 +84,7 @@ def home(request):
     
 # ── Load ─────────────────────
 
+@staff_member_required
 def load(request):
     if request.method == "POST":
         try:
@@ -101,6 +105,8 @@ def load(request):
                     created += 1
                 else:
                     updated += 1
+            
+            build_vectors()
 
             return JsonResponse({
                 "status":  "ok",
@@ -187,9 +193,14 @@ def catalogue(request):
     all_habitats   = Monster.objects.values_list("habitat",   flat=True).distinct().order_by("habitat")
 
     next_order = "desc" if sort_order == "asc" else "asc"
+    
+    paginator = Paginator(all_monsters, 40)   # 40 per page
+    page_num  = request.GET.get("page", 1)
+    page_obj  = paginator.get_page(page_num)
 
     context = {
-        "monsters":         all_monsters,
+        "monsters":         page_obj,         # ← page_obj instead of all_monsters
+        "page_obj":         page_obj,
         "total":            len(all_monsters),
         "all_types":        all_types,
         "all_sizes":        all_sizes,
@@ -209,6 +220,7 @@ def catalogue(request):
         "available_fields": available_fields,
         "selected_fields":  selected_fields,
     }
+
     return render(request, "monsters/catalogue.html", context)
 
 # ── Detail ─────────────────────
@@ -275,13 +287,15 @@ def search(request):
 
 # ── Build Index ─────────────────────
 
+@staff_member_required
 def build_index_view(request):
     if request.method == "POST":
         try:
-            count = build_index()
+            count   = build_index()
+            vectors = build_vectors()    
             return JsonResponse({
                 "status":  "ok",
-                "message": f"Index built successfully — {count} monsters indexed.",
+                "message": f"Index built — {count} monsters indexed, {vectors} vectors built.",
             })
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)})
@@ -297,4 +311,55 @@ def suggest_autocomplete(request):
     return JsonResponse({"results": list(monsters)})
 
 def suggest(request):
-    return render(request, "monsters/suggest.html")
+    # Warn the template if vectors haven't been built yet
+    vecs, _, _, _ = load_all_vectors()
+    return render(request, "monsters/suggest.html", {"vectors_ready": bool(vecs)})
+
+
+def recommend(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST only."})
+
+    try:
+        # Check shelf exists
+        vecs, _, _, _ = load_all_vectors()
+        if not vecs:
+            return JsonResponse({
+                "status":  "error",
+                "message": "Vectors not built yet — go to Load Data and click 'Build Index'.",
+            })
+
+        data = json.loads(request.body)
+        pks  = [int(pk) for pk in data.get("ids", [])]
+
+        if not pks:
+            return JsonResponse({"status": "error", "message": "No monsters selected."})
+
+        results = get_recommendations(pks, top_n=20)
+
+        if not results:
+            return JsonResponse({
+                "status":  "error",
+                "message": "No recommendations found — try different monsters or a wider CR range.",
+            })
+
+        recommendations = [
+            {
+                "id":        m.pk,
+                "name":      m.name,
+                "cr":        m.cr,
+                "type":      m.type,
+                "size":      m.size,
+                "alignment": m.alignment,
+                "habitat":   m.habitat,
+                "ac":        m.ac,
+                "hp":        m.hp,
+                "image_url": m.image_url,
+                "score":     round(score, 3),
+            }
+            for m, score in results
+        ]
+        return JsonResponse({"status": "ok", "results": recommendations})
+
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
