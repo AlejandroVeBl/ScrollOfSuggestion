@@ -36,6 +36,13 @@
       <button id="get-suggestions" class="btn btn-primary btn-large" disabled>
         ✨ Get Suggestions
       </button>
+      <button id="export-btn" class="btn btn-outline" style="display:none">
+        ⬇ Export
+      </button>
+      <label class="btn btn-outline" title="Import monster list from JSON">
+        ⬆ Import
+        <input type="file" id="import-input" accept=".json" style="display:none">
+      </label>
       <button id="clear-all" class="btn btn-outline" style="display:none">
         Clear all
       </button>
@@ -157,12 +164,14 @@ function renderSelected() {
     emptyHint.style.display = "";
     getSuggestionsBtn.disabled = true;
     clearAllBtn.style.display = "none";
+    document.getElementById('export-btn').style.display = "none";
     return;
   }
 
   emptyHint.style.display = "none";
   getSuggestionsBtn.disabled = false;
   clearAllBtn.style.display = "";
+  document.getElementById('export-btn').style.display = "";
 
   selected.forEach((m, idx) => {
     const li = document.createElement('li');
@@ -196,6 +205,55 @@ function renderSelected() {
 clearAllBtn.addEventListener('click', () => {
   selected.length = 0;
   renderSelected();
+});
+
+// ── Export ────────────────────────────────────────────────────────────
+document.getElementById('export-btn').addEventListener('click', () => {
+  const data = JSON.stringify(selected, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'encounter-list.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ── Import ────────────────────────────────────────────────────────────
+document.getElementById('import-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    // Validate it's an array of monster objects with at least id and name
+    if (!Array.isArray(data) || !data.every(m => m.id && m.name)) {
+      alert('Invalid file — expected a monster encounter list exported from this page.');
+      return;
+    }
+
+    // Verify each id exists in the DB via autocomplete
+    selected.length = 0;
+    for (const m of data) {
+      const resp = await fetch(`{% url 'monsters:suggest_autocomplete' %}?q=${encodeURIComponent(m.name)}`);
+      const result = await resp.json();
+      const match = result.results.find(r => r.id === m.id);
+      if (match) {
+        selected.push(match);
+      } else {
+        console.warn(`Monster not found in DB, skipping: ${m.name}`);
+      }
+    }
+
+    renderSelected();
+  } catch (err) {
+    alert('Could not read file: ' + err.message);
+  }
+
+  // Reset input so the same file can be re-imported
+  e.target.value = "";
 });
 
 // ── Get suggestions (wired in next step) ─────────────────────────────
